@@ -37,22 +37,6 @@ const db = getFirestore(app);
 // Mantém usuário logado
 setPersistence(auth, browserLocalPersistence);
 
-// === DOM ===
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const btnLogin = document.getElementById("btn-login");
-const btnRegistrar = document.getElementById("btn-registrar");
-const feedback = document.getElementById("feedback");
-const saldoAtualEl = document.getElementById("saldo-atual");
-const gastosAtualEl = document.getElementById("gastos-atual");
-const btnAddDespesa = document.getElementById("ad-dispesas");
-const btnAddSaldo = document.getElementById("ad-saldo");
-const inputValor = document.getElementById("valor");
-const inputDescricao = document.getElementById("descricao");
-const historicoEl = document.querySelector("#historico ul");
-const userNameEl = document.querySelector(".user-name");
-const userEmailEl = document.querySelector(".user-email");
-const userAvatarEl = document.querySelector(".user-avatar");
 let currentUser = null;
 
 // === FUNÇÕES AUXILIARES ===
@@ -62,7 +46,7 @@ function formatBR(n) {
 
 function animarSaldo(element, valorFinal) {
   let valorAtual = 0;
-  const incremento = valorFinal / 50; // 50 passos pra animar
+  const incremento = valorFinal / 50;
   const intervalo = setInterval(() => {
     valorAtual += incremento;
     if (valorAtual >= valorFinal) {
@@ -71,6 +55,21 @@ function animarSaldo(element, valorFinal) {
     }
     element.textContent = "R$ " + valorAtual.toFixed(2).replace(".", ",");
   }, 15);
+}
+
+function formatarDataTransacao(timestamp){
+  const data = new Date(timestamp);
+  const hoje = new Date();
+  const ontem = new Date();
+  ontem.setDate(hoje.getDate() - 1);
+
+  if(data.toDateString() === hoje.toDateString()){
+    return "Hoje " + data.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  if(data.toDateString() === ontem.toDateString()){
+    return "Ontem " + data.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  return data.toLocaleDateString('pt-BR') + " " + data.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 // === FIRESTORE ===
@@ -84,21 +83,24 @@ async function carregarDados(uid) {
   }
 
   const dados = snap.data();
-  
-  // Anima saldo e gastos
+
+  const saldoAtualEl = document.getElementById("saldo-atual");
+  const gastosAtualEl = document.getElementById("gastos-atual");
+  const historicoEl = document.querySelector("#historico ul");
+
   if (saldoAtualEl) animarSaldo(saldoAtualEl, dados.saldo);
   if (gastosAtualEl) animarSaldo(gastosAtualEl, dados.gastos);
 
-  // Histórico
   if (historicoEl) {
     historicoEl.innerHTML = "";
-    (dados.transacoes || []).forEach((t, index) => {
+    const transacoes = (dados.transacoes || []).slice().reverse();
+    transacoes.forEach((t, index) => {
       const li = document.createElement("li");
-      li.setAttribute('data-index', index);
+      li.setAttribute('data-index', dados.transacoes.length - 1 - index);
       li.innerHTML = `
         <div>
           <h3 class="medio-text">${t.descricao}</h3>
-          <p>${new Date(t.data).toLocaleDateString()}</p>
+          <p>${formatarDataTransacao(t.data)}</p>
         </div>
         <span class="medio-text ${t.tipo === "despesa" ? "red" : "green"}">${formatBR(t.valor)}</span>
         <div class="delete-icon" style="display:none; cursor:pointer;">
@@ -112,7 +114,7 @@ async function carregarDados(uid) {
       `;
       historicoEl.appendChild(li);
 
-      if (index < (dados.transacoes || []).length - 1) {
+      if (index < transacoes.length - 1) {
         const separator = document.createElement("div");
         separator.className = "linha";
         historicoEl.appendChild(separator);
@@ -130,6 +132,10 @@ async function carregarNomeUsuario(uid) {
   if (!snap.exists()) return;
   const dados = snap.data();
   const nome = dados.nome || "Usuário";
+
+  const userNameEl = document.querySelector(".user-name");
+  const userEmailEl = document.querySelector(".user-email");
+  const userAvatarEl = document.querySelector(".user-avatar");
 
   if (userNameEl) userNameEl.textContent = nome;
   if (userEmailEl && currentUser) userEmailEl.textContent = currentUser.email;
@@ -159,8 +165,12 @@ async function apagarTransacao(uid, transacaoIndex) {
   let novoSaldo = dados.saldo;
   let novosGastos = dados.gastos;
 
-  if (t.tipo === "despesa") novosGastos -= Number(t.valor);
-  else if (t.tipo === "entrada") novoSaldo -= Number(t.valor);
+  if(t.tipo === "despesa"){
+    novoSaldo += Number(t.valor);
+    novosGastos -= Number(t.valor);
+  } else if(t.tipo === "entrada"){
+    novoSaldo -= Number(t.valor);
+  }
 
   transacoes.splice(transacaoIndex, 1);
   await updateDoc(userRef, { transacoes, saldo: novoSaldo, gastos: novosGastos });
@@ -169,37 +179,29 @@ async function apagarTransacao(uid, transacaoIndex) {
 }
 
 // === LOGIN / REGISTRO ===
+const btnLogin = document.getElementById("btn-login");
+const btnRegistrar = document.getElementById("btn-registrar");
+const feedback = document.getElementById("feedback");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+
 if(btnRegistrar){
   btnRegistrar.addEventListener("click", async (e) => {
     e.preventDefault();
     const email = emailInput.value.trim();
     const senha = passwordInput.value.trim();
-
     if(!email || !senha){
       feedback.textContent = "Digite email e senha válidos!";
       feedback.style.color = "red";
       return;
     }
-
     try {
-      // Cria usuário no Firebase Auth
       const cred = await createUserWithEmailAndPassword(auth, email, senha);
       currentUser = cred.user;
-
-      // Cria documento do usuário no Firestore
-      await setDoc(doc(db, "usuarios", currentUser.uid), {
-        saldo: 0,
-        gastos: 0,
-        transacoes: [],
-        nome: "Usuário"
-      });
-
+      await setDoc(doc(db, "usuarios", currentUser.uid), { saldo: 0, gastos: 0, transacoes: [], nome: "Usuário" });
       feedback.textContent = "Conta criada com sucesso! Redirecionando...";
       feedback.style.color = "green";
-
-      // Redireciona pra tela home
       window.location.href = "index.html";
-
     } catch(err){
       console.error("Erro registro:", err);
       feedback.textContent = "Erro ao criar conta: " + err.message;
@@ -271,12 +273,12 @@ if (formTrocarNome){
 const menuSair = document.getElementById("menu-sair");
 if(menuSair){
   menuSair.addEventListener("click", async (e)=>{
-    e.preventDefault(); // previne de seguir o href "#"
+    e.preventDefault();
     try {
       if(currentUser){
         await signOut(auth);
         currentUser = null;
-        window.location.href = "/login.html"; // redireciona pro login
+        window.location.href = "/login.html";
       }
     } catch(err){
       console.error("Erro ao sair:", err);
@@ -284,11 +286,62 @@ if(menuSair){
   });
 }
 
+// === TRANSAÇÕES E BOTÕES DE ADICIONAR ===
+document.addEventListener('DOMContentLoaded', ()=>{
+  const btnAddDespesa = document.getElementById("ad-dispesas");
+  const btnAddSaldo = document.getElementById("ad-saldo");
+  const inputValor = document.getElementById("valor");
+  const inputDescricao = document.getElementById("descricao");
+
+  if(btnAddDespesa){
+    btnAddDespesa.addEventListener("click", async ()=>{
+      if(!currentUser) return alert("Usuário não logado!");
+      const valor = parseFloat(inputValor.value.replace(",", "."));
+      const descricao = inputDescricao.value.trim();
+      if(!valor || !descricao) return alert("Preencha valor e descrição");
+
+      const userRef = doc(db, "usuarios", currentUser.uid);
+      const snap = await getDoc(userRef);
+      const dados = snap.data();
+      await updateDoc(userRef, {
+        saldo: dados.saldo - valor,
+        gastos: dados.gastos + valor,
+        transacoes: arrayUnion({ descricao, valor, tipo:"despesa", data:Date.now() })
+      });
+      await carregarDados(currentUser.uid);
+      inputValor.value = '';
+      inputDescricao.value = '';
+      inputValor.focus();
+    });
+  }
+
+  if(btnAddSaldo){
+    btnAddSaldo.addEventListener("click", async ()=>{
+      if(!currentUser) return alert("Usuário não logado!");
+      const valor = parseFloat(inputValor.value.replace(",", "."));
+      const descricao = inputDescricao.value.trim() || "Depósito";
+      if(!valor) return alert("Preencha um valor válido");
+
+      const userRef = doc(db, "usuarios", currentUser.uid);
+      const snap = await getDoc(userRef);
+      const dados = snap.data();
+      await updateDoc(userRef, {
+        saldo: dados.saldo + valor,
+        transacoes: arrayUnion({ descricao, valor, tipo:"entrada", data:Date.now() })
+      });
+      await carregarDados(currentUser.uid);
+      inputValor.value = '';
+      inputDescricao.value = '';
+      inputValor.focus();
+    });
+  }
+});
 
 // === MENU DE CONTEXTO / DELETE TRANSAÇÃO ===
 function setupTransactionItems(){
   const items = document.querySelectorAll('#historico li');
-  items.forEach((item, index)=>{
+  items.forEach((item)=>{
+    const index = parseInt(item.getAttribute('data-index'));
     const valueSpan = item.querySelector('span');
     const deleteIcon = item.querySelector('.delete-icon');
 
@@ -319,52 +372,12 @@ onAuthStateChanged(auth, async (user)=>{
     currentUser = user;
     await carregarDados(user.uid);
     await carregarNomeUsuario(user.uid);
-
-    // redireciona para home se estiver no login/registro
     if(window.location.href.includes('login.html') || window.location.href.includes('registrar.html')){
       window.location.href = "index.html";
     }
-
   } else {
     if (!window.location.href.includes('login.html') && !window.location.href.includes('registrar.html')){
       window.location.href = "login.html";
     }
   }
 });
-
-// === ADICIONAR SALDO / DESPESA ===
-// Esses listeners só funcionam se currentUser existir
-if(btnAddSaldo){
-  btnAddSaldo.addEventListener("click", async ()=>{
-    if(!currentUser) return;
-    const valor = parseFloat(inputValor.value);
-    const descricao = inputDescricao.value || "Depósito";
-    if(!valor) return;
-    const userRef = doc(db, "usuarios", currentUser.uid);
-    const snap = await getDoc(userRef);
-    const dados = snap.data();
-    await updateDoc(userRef, {
-      saldo: dados.saldo + valor,
-      transacoes: arrayUnion({ descricao, valor, tipo:"entrada", data:Date.now() })
-    });
-    await carregarDados(currentUser.uid);
-  });
-}
-
-if(btnAddDespesa){
-  btnAddDespesa.addEventListener("click", async ()=>{
-    if(!currentUser) return;
-    const valor = parseFloat(inputValor.value);
-    const descricao = inputDescricao.value;
-    if(!valor || !descricao) return;
-    const userRef = doc(db, "usuarios", currentUser.uid);
-    const snap = await getDoc(userRef);
-    const dados = snap.data();
-    await updateDoc(userRef, {
-      saldo: dados.saldo - valor,
-      gastos: dados.gastos + valor,
-      transacoes: arrayUnion({ descricao, valor, tipo:"despesa", data:Date.now() })
-    });
-    await carregarDados(currentUser.uid);
-  });
-}
