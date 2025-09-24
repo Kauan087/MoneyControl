@@ -332,16 +332,19 @@ async function carregarInterfaceCompleta(user) {
   if (historicoEl) setupTransactionItems();
 }
 
-// === DETECTA USUÁRIO LOGADO ===
+// main.js
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    await carregarInterfaceCompleta(user);
+    currentUser = user;
+    // Carrega os dados e interface completa do usuário
+    await carregarDados(user.uid);
+    await carregarNomeUsuario(user.uid);
   } else {
-    if (!window.location.href.includes('login.html') && !window.location.href.includes('registrar.html')) {
-      window.location.href = 'login.html';
-    }
+    // Redireciona para login se não estiver logado
+    window.location.href = 'http://127.0.0.1:3000/MoneyControl/login.html'; // aqui coloca o caminho absoluto
   }
 });
+
 
 // === LOGOUT ===
 window.sair = async () => {
