@@ -1,4 +1,10 @@
 // main.js
+// Notyf global, só uma instância
+const notyf = new Notyf({
+  duration: 4000,
+  position: { x: 'right', y: 'top' }
+});
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
 import { 
   getAuth, 
@@ -44,6 +50,21 @@ function formatBR(n) {
   return "R$ " + Number(n).toFixed(2).replace(".", ",");
 }
 
+function checarLimite(gastos, limite) {
+  if (!limite || limite <= 0) return; // evita divisão por zero
+
+  const porcentagem = (gastos / limite) * 100;
+
+  if (porcentagem >= 50 && porcentagem < 80) {
+    notyf.warning('Você atingiu 50% do seu limite mensal!');
+  } else if (porcentagem >= 80 && porcentagem < 100) {
+    notyf.error('Cuidado! 80% do limite mensal atingido!');
+  } else if (porcentagem >= 100) {
+    notyf.error('Limite mensal atingido! Pare de gastar!');
+  }
+}
+
+
 function animarSaldo(element, valorFinal) {
   let valorAtual = 0;
   const incremento = valorFinal / 50;
@@ -56,6 +77,8 @@ function animarSaldo(element, valorFinal) {
     element.textContent = "R$ " + valorAtual.toFixed(2).replace(".", ",");
   }, 15);
 }
+
+
 
 function formatarDataTransacao(timestamp){
   const data = new Date(timestamp);
@@ -72,10 +95,57 @@ function formatarDataTransacao(timestamp){
   return data.toLocaleDateString('pt-BR') + " " + data.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+
+//Função de Resetar Automatico//
+async function verificarResetMensal(dadosUsuario, userRef) {
+  if (!dadosUsuario.dataReinicio) return;
+
+  const diaHoje = new Date().getDate(); // pega o dia do mês atual
+  const ultimoReset = dadosUsuario.ultimoReset || 0; // último reset feito
+
+  if (diaHoje === Number(dadosUsuario.dataReinicio) && ultimoReset !== diaHoje) {
+    try {
+      await updateDoc(userRef, {
+        gastos: 0, // zera gastos
+        ultimoReset: diaHoje, // marca que já fez reset
+      });
+
+      const gastosEl = document.getElementById("gastos-atual");
+      if (gastosEl) gastosEl.textContent = "R$ 0,00";
+
+      console.log("[resetMensal] Gastos zerados automaticamente no dia certo!");
+
+      // 🔔 Notificação aqui
+      if (Notification.permission === "granted") {
+        new Notification("MoneyControl", {
+          body: "Seus gastos foram resetados automaticamente hoje.",
+          icon: "../assets/logo.png"// opcional, coloca um ícone se quiser
+        });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then((perm) => {
+          if (perm === "granted") {
+            new Notification("MoneyControl", {
+              body: "Seus gastos foram resetados automaticamente hoje.",
+              icon: "../assets/logo.png",
+            });
+          }
+        });
+      }
+
+    } catch (err) {
+      console.error("[resetMensal] erro ao resetar automaticamente:", err);
+    }
+  }
+}
+
+
+
+
 // === FIRESTORE ===
 async function carregarDados(uid) {
   const userRef = doc(db, "usuarios", uid);
   const snap = await getDoc(userRef);
+  
   
   if (!snap.exists()) {
     await setDoc(userRef, { saldo: 0, gastos: 0, transacoes: [], nome: "Usuário" });
@@ -83,6 +153,34 @@ async function carregarDados(uid) {
   }
 
   const dados = snap.data();
+  
+
+
+  // AQUI: só chama depois de pegar os dados
+  await verificarResetMensal(dados, userRef);
+
+
+  const limiteInput = document.getElementById("limit-range");
+  const displayValue = document.getElementById("display-value");
+ 
+  // Carregar valor do banco
+    if(limiteInput && displayValue){
+      if(dados.limiteMensal !== undefined){
+      limiteInput.value = dados.limiteMensal; // atualiza input
+      displayValue.textContent = Number(dados.limiteMensal).toLocaleString("pt-BR", {minimumFractionDigits: 2});
+    }
+
+    // Atualiza display quando o usuário mexe na barra
+    limiteInput.addEventListener("input", () => {
+      displayValue.textContent = Number(limiteInput.value).toLocaleString("pt-BR", {minimumFractionDigits: 2});
+    });
+  }
+
+
+
+  // chama aqui a notificação
+  
+
 
   const saldoAtualEl = document.getElementById("saldo-atual");
   const gastosAtualEl = document.getElementById("gastos-atual");
@@ -90,6 +188,10 @@ async function carregarDados(uid) {
 
   if (saldoAtualEl) animarSaldo(saldoAtualEl, dados.saldo);
   if (gastosAtualEl) animarSaldo(gastosAtualEl, dados.gastos);
+
+
+
+  
 
   if (historicoEl) {
     historicoEl.innerHTML = "";
@@ -122,6 +224,15 @@ async function carregarDados(uid) {
     });
   }
 
+  
+
+
+  
+
+
+
+
+  
   setupTransactionItems();
 }
 
@@ -150,6 +261,8 @@ async function atualizarNomeUsuario(uid, novoNome) {
   await updateDoc(userRef, { nome: novoNome });
   await carregarNomeUsuario(uid);
 }
+
+
 
 // === APAGAR TRANSAÇÃO ===
 async function apagarTransacao(uid, transacaoIndex) {
@@ -297,7 +410,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     btnAddDespesa.addEventListener("click", async ()=>{
       if(!currentUser) return alert("Usuário não logado!");
       const valor = parseFloat(inputValor.value.replace(",", "."));
-      const descricao = inputDescricao.value.trim();
+      const descricao = inputDescricao.value.trim() || "Despesa";
       if(!valor || !descricao) return alert("Preencha valor e descrição");
 
       const userRef = doc(db, "usuarios", currentUser.uid);
@@ -312,7 +425,37 @@ document.addEventListener('DOMContentLoaded', ()=>{
       inputValor.value = '';
       inputDescricao.value = '';
       inputValor.focus();
+
+      await updateDoc(userRef, {
+      saldo: dados.saldo - valor,
+      gastos: dados.gastos + valor,
+      transacoes: arrayUnion({ descricao, valor, tipo:"despesa", data:Date.now() })
     });
+
+    await carregarDados(currentUser.uid);
+
+    // chama aqui a checagem de limite
+    checarLimite(dados.gastos + valor, dados.limiteMensal);
+
+
+    });
+
+
+    const limite = dados.limiteMensal || 0;
+    const gastos = dados.gastos || 0;
+    const porcentagem = (gastos / limite) * 100;
+
+    
+    const notyf = new Notyf({ duration: 4000, position: { x: 'right', y: 'top' } });
+
+    if (porcentagem >= 50 && porcentagem < 80) {
+      notyf.warning('Você atingiu 50% do seu limite mensal!');
+    } else if (porcentagem >= 80 && porcentagem < 100) {
+      notyf.error('Cuidado! 80% do limite mensal atingido!');
+    } else if (porcentagem >= 100) {
+      notyf.error('Limite mensal atingido! Pare de gastar!');
+    }
+
   }
 
   if(btnAddSaldo){
@@ -367,17 +510,62 @@ function setupTransactionItems(){
 }
 
 // === DETECTA USUÁRIO LOGADO ===
-onAuthStateChanged(auth, async (user)=>{
-  if(user){
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
     currentUser = user;
+    const userRef = doc(db, "usuarios", user.uid);
+    const snap = await getDoc(userRef);
+
+    if (snap.exists()) {
+      const dados = snap.data();
+
+      // 🔥 Chama a verificação do reset automático aqui
+      await verificarResetMensal(dados, userRef);
+    }
+
     await carregarDados(user.uid);
     await carregarNomeUsuario(user.uid);
-    if(window.location.href.includes('login.html') || window.location.href.includes('registrar.html')){
+
+    if (
+      window.location.href.includes("login.html") ||
+      window.location.href.includes("registrar.html")
+    ) {
       window.location.href = "index.html";
     }
   } else {
-    if (!window.location.href.includes('login.html') && !window.location.href.includes('registrar.html')){
+    if (
+      !window.location.href.includes("login.html") &&
+      !window.location.href.includes("registrar.html")
+    ) {
       window.location.href = "login.html";
     }
+  }
+
+  
+});
+
+
+const btnSalvarMeta = document.getElementById("btn-salvar-meta");
+
+btnSalvarMeta.addEventListener("click", async () => {
+  if (!currentUser) return alert("Usuário não logado!");
+
+  const limiteInput = document.getElementById("limit-range");
+  const noLimitCheckbox = document.getElementById("no-limit");
+  let limiteMensal = null; // padrão null se não definir limite
+
+  if (!noLimitCheckbox.checked) {
+    limiteMensal = parseFloat(limiteInput.value);
+    if (isNaN(limiteMensal)) return alert("Valor inválido!");
+  }
+
+  const userRef = doc(db, "usuarios", currentUser.uid);
+
+  try {
+    await updateDoc(userRef, { limiteMensal: limiteMensal });
+    alert("Limite mensal salvo com sucesso!");
+  } catch (err) {
+    console.error("Erro ao salvar limite:", err);
+    alert("Erro ao salvar limite: " + err.message);
   }
 });
