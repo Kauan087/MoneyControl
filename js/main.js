@@ -1,31 +1,28 @@
-// main.js
-// Notyf global, só uma instância
-const notyf = new Notyf({
-  duration: 4000,
-  position: { x: 'right', y: 'top' }
-});
+// main.js (arquivo completo pronto pra colar)
 
+// =========================== IMPORTS FIREBASE ===========================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js";
-import { 
-  getAuth, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  setPersistence, 
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  setPersistence,
   browserLocalPersistence,
   onAuthStateChanged,
   signOut,
   sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
-import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  arrayUnion 
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  increment
 } from "https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js";
 
-// === CONFIG FIREBASE ===
+// =========================== FIREBASE CONFIG ===========================
 const firebaseConfig = {
   apiKey: "AIzaSyAFqvulIgDvpk7ukasWMeEpq_BFUCt94Lo",
   authDomain: "moneycontrol-e0c85.firebaseapp.com",
@@ -39,29 +36,65 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-
-// Mantém usuário logado
 setPersistence(auth, browserLocalPersistence);
 
 let currentUser = null;
+let notyf;
+(function initNotyfSafe() {
+  try {
+    if (window && window.Notyf) {
+      notyf = new Notyf({
+        duration: 3500,
+        position: { x: "right", y: "top" }
+      });
+    } else {
+      notyf = {
+        success: (m) => { console.log("[notyf success]", m); alert("✅ " + m); },
+        error: (m) => { console.log("[notyf error]", m); alert("❌ " + m); },
+        warning: (m) => { console.log("[notyf warn]", m); alert("⚠️ " + m); }
+      };
+    }
+  } catch (e) {
+    console.error("Erro inicializando Notyf (fallback ativado):", e);
+    notyf = {
+      success: (m) => alert("✅ " + m),
+      error: (m) => alert("❌ " + m),
+      warning: (m) => alert("⚠️ " + m)
+    };
+  }
+})();
 
 // === FUNÇÕES AUXILIARES ===
 function formatBR(n) {
   return "R$ " + Number(n).toFixed(2).replace(".", ",");
 }
 
+let ultimaNotificacaoNivel = null;
+
 function checarLimite(gastos, limite) {
-  if (!limite || limite <= 0) return; // evita divisão por zero
+  if (!limite || limite <= 0) {
+    ultimaNotificacaoNivel = null; // reseta para que futuras notificações funcionem
+    return;
+  }
 
   const porcentagem = (gastos / limite) * 100;
+  let nivel = 0;
 
-  if (porcentagem >= 50 && porcentagem < 80) {
-    notyf.warning('Você atingiu 50% do seu limite mensal!');
-  } else if (porcentagem >= 80 && porcentagem < 100) {
-    notyf.error('Cuidado! 80% do limite mensal atingido!');
-  } else if (porcentagem >= 100) {
-    notyf.error('Limite mensal atingido! Pare de gastar!');
-  }
+  if (porcentagem >= 100) nivel = 100;
+  else if (porcentagem >= 80) nivel = 80;
+  else if (porcentagem >= 50) nivel = 50;
+
+  // evita repetir a mesma notificação várias vezes
+  if (ultimaNotificacaoNivel === nivel) return;
+
+  // dispara notificação visual (notyf)
+  if (nivel === 50) notyf.warning("Você atingiu 50% do seu limite mensal!");
+  else if (nivel === 80) notyf.error("Cuidado! 80% do limite mensal atingido!");
+  else if (nivel === 100) notyf.error("Limite mensal atingido! Pare de gastar!");
+
+
+
+  ultimaNotificacaoNivel = nivel;
 }
 
 
@@ -263,10 +296,12 @@ async function apagarTransacao(uid, transacaoIndex) {
 
   if(t.tipo === "despesa"){
     novoSaldo += Number(t.valor);
-    novosGastos -= Number(t.valor);
+    // garante que gastos nunca fiquem negativos
+    novosGastos = Math.max(0, dados.gastos - Number(t.valor));
   } else if(t.tipo === "entrada"){
     novoSaldo -= Number(t.valor);
   }
+
 
   transacoes.splice(transacaoIndex, 1);
   await updateDoc(userRef, { transacoes, saldo: novoSaldo, gastos: novosGastos });
@@ -281,45 +316,56 @@ const feedback = document.getElementById("feedback");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 
-if(btnRegistrar){
-  btnRegistrar.addEventListener("click", async (e) => {
-    e.preventDefault();
-    const email = emailInput.value.trim();
-    const senha = passwordInput.value.trim();
-    if(!email || !senha){
-      feedback.textContent = "Digite email e senha válidos!";
-      feedback.style.color = "red";
-      return;
-    }
+if (btnLogin) {
+  btnLogin.addEventListener("click", async (e) => {
+    e.preventDefault(); // garante que o form NÃO faça reload
+    const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("password").value.trim();
+
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, senha);
+      const cred = await signInWithEmailAndPassword(auth, email, senha);
       currentUser = cred.user;
-      await setDoc(doc(db, "usuarios", currentUser.uid), { saldo: 0, gastos: 0, transacoes: [], nome: "Usuário" });
-      feedback.textContent = "Conta criada com sucesso! Redirecionando...";
-      feedback.style.color = "green";
+      console.log("Login OK:", currentUser.uid);
+      notyf.success("Login efetuado!");
+      // redireciona manualmente (se quiser)
       window.location.href = "index.html";
-    } catch(err){
-      console.error("Erro registro:", err);
-      feedback.textContent = "Erro ao criar conta: " + err.message;
+    } catch (err) {
+      console.error("Erro login:", err);
+      feedback.textContent = err.message || "Erro ao logar";
       feedback.style.color = "red";
+      notyf.error(err.message || "Erro ao logar");
     }
   });
 }
 
-if(btnLogin){
-  btnLogin.addEventListener("click", async (e) => {
+if (btnRegistrar) {
+  btnRegistrar.addEventListener("click", async (e) => {
     e.preventDefault();
-    const email = emailInput.value;
-    const senha = passwordInput.value;
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, senha);
-      currentUser = cred.user;
-    } catch(err){
-      feedback.textContent = "Erro ao logar: " + err.message;
+    const email = document.getElementById("email").value.trim();
+    const senha = document.getElementById("password").value.trim();
+
+    if (!email || !senha) {
+      feedback.textContent = "Digite email e senha válidos!";
       feedback.style.color = "red";
+      return;
+    }
+
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, senha);
+      currentUser = cred.user;
+      // cria doc do usuário com limiteMensal = null por padrão
+      await setDoc(doc(db, "usuarios", currentUser.uid), { saldo: 0, gastos: 0, transacoes: [], nome: "Usuário", limiteMensal: null });
+      notyf.success("Conta criada! Redirecionando...");
+      window.location.href = "index.html";
+    } catch (err) {
+      console.error("Erro registrar:", err);
+      feedback.textContent = err.message || "Erro ao criar conta";
+      feedback.style.color = "red";
+      notyf.error(err.message || "Erro ao criar conta");
     }
   });
 }
+
 
 // === RESET SENHA ===
 const btnReset = document.getElementById("btn-reset");
@@ -415,23 +461,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       transacoes: arrayUnion({ descricao, valor, tipo:"despesa", data:Date.now() })
     });
 
-    await carregarDados(currentUser.uid);
 
     // chama aqui a checagem de limite
     checarLimite(dados.gastos + valor, dados.limiteMensal);
-
-    const limite = dados.limiteMensal || 0;
-    const gastos = dados.gastos || 0;
-    const porcentagem = (gastos / limite) * 100;
-
-    if (porcentagem >= 50 && porcentagem < 80) {
-      notyf.warning('Você atingiu 50% do seu limite mensal!');
-    } else if (porcentagem >= 80 && porcentagem < 100) {
-      notyf.error('Cuidado! 80% do limite mensal atingido!');
-    } else if (porcentagem >= 100) {
-      notyf.error('Limite mensal atingido! Pare de gastar!');
-    }
-
 
     });
 

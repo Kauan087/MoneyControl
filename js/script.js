@@ -198,3 +198,120 @@ async function apagarTransacaoAnimada(uid, index) {
   }, 400); // 400ms = tempo da animação
 }
 
+
+
+document.addEventListener('DOMContentLoaded', function() {
+            const menuButton = document.getElementById('menuButton');
+            const closeButton = document.getElementById('closeButton');
+            const overlay = document.getElementById('overlay');
+            const sidebar = document.getElementById('sidebar');
+            
+            // Open menu
+            menuButton.addEventListener('click', () => {
+                overlay.classList.add('active');
+                sidebar.classList.add('active');
+                document.body.style.overflow = 'hidden'; // Prevent scrolling
+            });
+            
+            // Close menu
+            function closeMenu() {
+                overlay.classList.remove('active');
+                sidebar.classList.remove('active');
+                document.body.style.overflow = ''; // Enable scrolling
+            }
+            
+            closeButton.addEventListener('click', closeMenu);
+            overlay.addEventListener('click', closeMenu);
+            
+            // Category buttons functionality
+            const categoryButtons = document.querySelectorAll('.butoes-sugestivos button');
+            const descriptionInput = document.getElementById('descricao');
+            
+            categoryButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    descriptionInput.value = button.textContent.trim();
+                });
+            });
+            
+            // === FUNCIONALIDADE DE TROCAR NOME ===
+            // Elementos do modal
+            const modalTrocarNome = document.getElementById('modal-trocar-nome');
+            const btnFecharModal = document.querySelector('.close-modal');
+            const formTrocarNome = document.getElementById('form-trocar-nome');
+            const inputNovoNome = document.getElementById('novo-nome');
+            
+            // Botão "Mudar Nome" no menu lateral
+            const btnMudarNome = document.querySelector('.menu-link[data-action="mudar-nome"]');
+            
+            // Abrir modal ao clicar no botão "Mudar Nome"
+            if (btnMudarNome) {
+                btnMudarNome.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    modalTrocarNome.classList.add('active');
+                    document.body.style.overflow = 'hidden'; // Impedir rolagem
+                    
+                    // Preencher o campo com o nome atual, se existir
+                    const userNameEl = document.querySelector('.user-name');
+                    if (userNameEl) {
+                        inputNovoNome.value = userNameEl.textContent;
+                    }
+                });
+            }
+            
+            // Fechar modal ao clicar no botão X
+            if (btnFecharModal) {
+                btnFecharModal.addEventListener('click', () => {
+                    modalTrocarNome.classList.remove('active');
+                    document.body.style.overflow = ''; // Permitir rolagem
+                });
+            }
+            
+            // Fechar modal ao clicar fora dele
+            modalTrocarNome.addEventListener('click', (e) => {
+                if (e.target === modalTrocarNome) {
+                    modalTrocarNome.classList.remove('active');
+                    document.body.style.overflow = ''; // Permitir rolagem
+                }
+            });
+            
+            // Processar o formulário de troca de nome
+            if (formTrocarNome) {
+                formTrocarNome.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const novoNome = inputNovoNome.value.trim();
+                    
+                    if (!novoNome) {
+                        alert('Por favor, digite um nome válido.');
+                        return;
+                    }
+                    
+                    try {
+                        // Aqui você chamaria a função atualizarNomeUsuario do seu main.js
+                        // Como estamos no HTML, vamos simular a atualização para demonstração
+                        const userNameEl = document.querySelector('.user-name');
+                        const userAvatarEl = document.querySelector('.user-avatar');
+                        
+                        if (userNameEl) {
+                            userNameEl.textContent = novoNome;
+                        }
+                        
+                        if (userAvatarEl) {
+                            const iniciais = novoNome.split(' ')
+                                .map(nome => nome.charAt(0))
+                                .join('')
+                                .substring(0, 2)
+                                .toUpperCase();
+                            userAvatarEl.textContent = iniciais;
+                        }
+                        
+                        alert('Nome atualizado com sucesso!');
+                        modalTrocarNome.classList.remove('active');
+                        document.body.style.overflow = ''; // Permitir rolagem
+                    } catch (error) {
+                        console.error("Erro ao atualizar nome:", error);
+                        alert('Erro ao atualizar o nome. Tente novamente.');
+                    }
+                });
+            }
+        });
