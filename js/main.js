@@ -143,18 +143,16 @@ async function verificarResetMensal(dadosUsuario, userRef) {
 
 // === FIRESTORE ===
 async function carregarDados(uid) {
+  
   const userRef = doc(db, "usuarios", uid);
   const snap = await getDoc(userRef);
-  
-  
+
   if (!snap.exists()) {
     await setDoc(userRef, { saldo: 0, gastos: 0, transacoes: [], nome: "Usuário" });
     return carregarDados(uid);
   }
 
   const dados = snap.data();
-  
-
 
   // AQUI: só chama depois de pegar os dados
   await verificarResetMensal(dados, userRef);
@@ -175,12 +173,6 @@ async function carregarDados(uid) {
       displayValue.textContent = Number(limiteInput.value).toLocaleString("pt-BR", {minimumFractionDigits: 2});
     });
   }
-
-
-
-  // chama aqui a notificação
-  
-
 
   const saldoAtualEl = document.getElementById("saldo-atual");
   const gastosAtualEl = document.getElementById("gastos-atual");
@@ -223,15 +215,6 @@ async function carregarDados(uid) {
       }
     });
   }
-
-  
-
-
-  
-
-
-
-
   
   setupTransactionItems();
 }
@@ -437,16 +420,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     // chama aqui a checagem de limite
     checarLimite(dados.gastos + valor, dados.limiteMensal);
 
-
-    });
-
-
     const limite = dados.limiteMensal || 0;
     const gastos = dados.gastos || 0;
     const porcentagem = (gastos / limite) * 100;
-
-    
-    const notyf = new Notyf({ duration: 4000, position: { x: 'right', y: 'top' } });
 
     if (porcentagem >= 50 && porcentagem < 80) {
       notyf.warning('Você atingiu 50% do seu limite mensal!');
@@ -455,6 +431,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     } else if (porcentagem >= 100) {
       notyf.error('Limite mensal atingido! Pare de gastar!');
     }
+
+
+    });
+
+
+
 
   }
 
