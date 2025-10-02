@@ -88,7 +88,7 @@ function checarLimite(gastos, limite) {
   if (ultimaNotificacaoNivel === nivel) return;
 
   // dispara notificação visual (notyf)
-  if (nivel === 50) notyf.warning("Você atingiu 50% do seu limite mensal!");
+  if (nivel === 50) notyf.error("Você atingiu 50% do seu limite mensal!");
   else if (nivel === 80) notyf.error("Cuidado! 80% do limite mensal atingido!");
   else if (nivel === 100) notyf.error("Limite mensal atingido! Pare de gastar!");
 
@@ -455,17 +455,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
       inputDescricao.value = '';
       inputValor.focus();
 
-      await updateDoc(userRef, {
-      saldo: dados.saldo - valor,
-      gastos: dados.gastos + valor,
-      transacoes: arrayUnion({ descricao, valor, tipo:"despesa", data:Date.now() })
-    });
 
 
     // chama aqui a checagem de limite
     checarLimite(dados.gastos + valor, dados.limiteMensal);
-
-    });
+  });
 
 
 
@@ -534,8 +528,28 @@ onAuthStateChanged(auth, async (user) => {
       const dados = snap.data();
 
       // 🔥 Chama a verificação do reset automático aqui
-      await verificarResetMensal(dados, userRef);
+      await verificarResetMensal(dados, userRef)
+      const limiteDoBanco = snap.data().limiteMensal || 0; // valor do banco ou 0
+  
+
+      // Agora atualiza os inputs
+      const rangeInput = document.getElementById('limit-range');
+      const manualInput = document.getElementById('manual-input');
+      const displayValue = document.getElementById('display-value');
+
+      if (rangeInput && manualInput && displayValue) {
+        rangeInput.value = limiteDoBanco;
+        manualInput.value = limiteDoBanco;
+        displayValue.textContent = limiteDoBanco;
+
+        // Atualiza a barra do slider (aquela cor)
+        const primaryColor = getComputedStyle(document.documentElement)
+                              .getPropertyValue('--color-primary').trim();
+        const percentage = (limiteDoBanco / rangeInput.max) * 100;
+        rangeInput.style.background = `linear-gradient(to right, ${primaryColor} ${percentage}%, #E0E0E0 ${percentage}%)`;
+      }
     }
+    
 
     await carregarDados(user.uid);
     await carregarNomeUsuario(user.uid);
@@ -554,6 +568,8 @@ onAuthStateChanged(auth, async (user) => {
       window.location.href = "login.html";
     }
   }
+
+
 
   
 });
@@ -583,3 +599,7 @@ btnSalvarMeta.addEventListener("click", async () => {
     alert("Erro ao salvar limite: " + err.message);
   }
 });
+
+
+
+

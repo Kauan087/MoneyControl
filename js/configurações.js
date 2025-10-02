@@ -124,10 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
   manualInput.addEventListener('input', () => {
     let val = manualInput.value;
     if (val < 0) val = 0;
-    if (val > 10000) val = 100;
+    if (val > 10000) val = 10000;
     rangeInput.value = val;
     updateRangeDisplay(val);
   });
+
 
   // Checkbox "Não definir limite"
   noLimitCheckbox.addEventListener('change', () => {
