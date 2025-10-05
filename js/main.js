@@ -69,11 +69,12 @@ function formatBR(n) {
   return "R$ " + Number(n).toFixed(2).replace(".", ",");
 }
 
+
 let ultimaNotificacaoNivel = null;
 
 function checarLimite(gastos, limite) {
   if (!limite || limite <= 0) {
-    ultimaNotificacaoNivel = null; // reseta para que futuras notificações funcionem
+    ultimaNotificacaoNivel = null;
     return;
   }
 
@@ -84,18 +85,22 @@ function checarLimite(gastos, limite) {
   else if (porcentagem >= 80) nivel = 80;
   else if (porcentagem >= 50) nivel = 50;
 
-  // evita repetir a mesma notificação várias vezes
   if (ultimaNotificacaoNivel === nivel) return;
 
-  // dispara notificação visual (notyf)
-  if (nivel === 50) notyf.error("Você atingiu 50% do seu limite mensal!");
-  else if (nivel === 80) notyf.error("Cuidado! 80% do limite mensal atingido!");
-  else if (nivel === 100) notyf.error("Limite mensal atingido! Pare de gastar!");
-
-
+  // Carrega configuração salva
+  const notifConfig = JSON.parse(localStorage.getItem('notificacoes')) || {};
+  
+  if ((nivel === 50 && notifConfig.chk50) ||
+      (nivel === 80 && notifConfig.chk80) ||
+      (nivel === 100 && notifConfig.chk100)) {
+    if (nivel === 50) notyf.error("Você atingiu 50% do seu limite mensal!");
+    else if (nivel === 80) notyf.error("Cuidado! 80% do limite mensal atingido!");
+    else if (nivel === 100) notyf.error("Limite mensal atingido! Pare de gastar!");
+  }
 
   ultimaNotificacaoNivel = nivel;
 }
+
 
 
 function animarSaldo(element, valorFinal) {

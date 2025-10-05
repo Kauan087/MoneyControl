@@ -165,62 +165,70 @@ function fecharMetas() {
   document.getElementById("menumetas").style.display = "none";
 }
 
+// --- CONFIGURAÇÕES DE NOTIFICAÇÕES (configurações.js) ---
 
+// Elementos
+const chk50 = document.getElementById('chk50');
+const chk80 = document.getElementById('chk80');
+const chk100 = document.getElementById('chk100');
+const chkNone = document.getElementById('chkNone');
+const btnSalvarNotif = document.getElementById('btn-salvar-nofif');
 
-// Abre o card de notificações
+// Carrega estado salvo
+function carregarNotificacoes() {
+  const data = JSON.parse(localStorage.getItem('notificacoes')) || {
+    chk50: true,
+    chk80: true,
+    chk100: true,
+    chkNone: false
+  };
+
+  chk50.checked = data.chk50;
+  chk80.checked = data.chk80;
+  chk100.checked = data.chk100;
+  chkNone.checked = data.chkNone;
+
+  atualizarDesativar();
+}
+
+// Atualiza o estado do "Desativar notificações"
+function atualizarDesativar() {
+  if (chkNone.checked) {
+    chk50.checked = false;
+    chk80.checked = false;
+    chk100.checked = false;
+  } else if (!chk50.checked && !chk80.checked && !chk100.checked) {
+    chkNone.checked = true;
+  }
+}
+
+// Event listeners para comportamento automático
+chkNone.addEventListener('change', atualizarDesativar);
+[chk50, chk80, chk100].forEach(chk => {
+  chk.addEventListener('change', atualizarDesativar);
+});
+
+// Salvar estado quando clicar no botão
+btnSalvarNotif.addEventListener('click', () => {
+  const data = {
+    chk50: chk50.checked,
+    chk80: chk80.checked,
+    chk100: chk100.checked,
+    chkNone: chkNone.checked
+  };
+  localStorage.setItem('notificacoes', JSON.stringify(data));
+  alert('Configurações de notificações salvas!');
+  fecharNotifCard();
+});
+
+// Inicializa os checkboxes na carga da página
+carregarNotificacoes();
+
+// Funções de abrir/fechar card
 function abrirNotifCard() {
   document.getElementById("notifcard").style.display = "flex";
 }
 
-// Fecha o card e volta pro index.html
 function fecharNotifCard() {
-  window.location.href = "config.html"; 
   document.getElementById("notifcard").style.display = "none";
 }
-
- // Script para controlar o comportamento das notificações
-  const allChecks = document.querySelectorAll('.chk');
-  const noNotif = document.getElementById('chkNone');
-
-  // Quando marcar "Desativar notificações"
-  noNotif.addEventListener('change', () => {
-    if (noNotif.checked) {
-      allChecks.forEach(chk => chk.checked = false);
-    }
-  });
-
-  // Quando marcar qualquer uma das outras, desmarca "Desativar"
-  allChecks.forEach(chk => {
-    chk.addEventListener('change', () => {
-      if (chk.checked) {
-        noNotif.checked = false;
-      }
-    });
-  });
-
-
-  const normalChecks = document.querySelectorAll('#50, #80, #100');
-
-    function atualizarEstado() {
-      const algumMarcado = Array.from(normalChecks).some(chk => chk.checked);
-      
-      if (!algumMarcado) {
-        noNotif.checked = true;
-      } else {
-        noNotif.checked = false;
-      }
-    }
-
-    normalChecks.forEach(chk => {
-      chk.addEventListener('change', atualizarEstado);
-    });
-
-    noNotif.addEventListener('change', () => {
-      if (noNotif.checked) {
-        normalChecks.forEach(chk => chk.checked = false);
-      }
-    });
-
-    function fecharNotifCard() {
-      document.getElementById('notifcard').style.display = 'none';
-    }
