@@ -129,7 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateRangeDisplay(val);
   });
 
-
   // Checkbox "Não definir limite"
   noLimitCheckbox.addEventListener('change', () => {
     const disabled = noLimitCheckbox.checked;
@@ -165,3 +164,63 @@ function abrirMetas() {
 function fecharMetas() {
   document.getElementById("menumetas").style.display = "none";
 }
+
+
+
+// Abre o card de notificações
+function abrirNotifCard() {
+  document.getElementById("notifcard").style.display = "flex";
+}
+
+// Fecha o card e volta pro index.html
+function fecharNotifCard() {
+  window.location.href = "config.html"; 
+  document.getElementById("notifcard").style.display = "none";
+}
+
+ // Script para controlar o comportamento das notificações
+  const allChecks = document.querySelectorAll('.chk');
+  const noNotif = document.getElementById('chkNone');
+
+  // Quando marcar "Desativar notificações"
+  noNotif.addEventListener('change', () => {
+    if (noNotif.checked) {
+      allChecks.forEach(chk => chk.checked = false);
+    }
+  });
+
+  // Quando marcar qualquer uma das outras, desmarca "Desativar"
+  allChecks.forEach(chk => {
+    chk.addEventListener('change', () => {
+      if (chk.checked) {
+        noNotif.checked = false;
+      }
+    });
+  });
+
+
+  const normalChecks = document.querySelectorAll('#50, #80, #100');
+
+    function atualizarEstado() {
+      const algumMarcado = Array.from(normalChecks).some(chk => chk.checked);
+      
+      if (!algumMarcado) {
+        noNotif.checked = true;
+      } else {
+        noNotif.checked = false;
+      }
+    }
+
+    normalChecks.forEach(chk => {
+      chk.addEventListener('change', atualizarEstado);
+    });
+
+    noNotif.addEventListener('change', () => {
+      if (noNotif.checked) {
+        normalChecks.forEach(chk => chk.checked = false);
+      }
+    });
+
+    function fecharNotifCard() {
+      document.getElementById('notifcard').style.display = 'none';
+    }

@@ -129,7 +129,7 @@
     </div>
 
     <!-- Opção de notificações -->
-    <div class="config-item">
+    <div class="config-item" onclick="abrirNotifCard()">
       <img class="icon2" src="assets/notificacao.png" alt="notificacao">
       <div class="config-text">
         <h2 class="medio-text">Notificações</h2>
@@ -137,6 +137,50 @@
       </div>
       <img class="icon1 arrow" src="assets/setas-direitas.png" alt="seta direita">
     </div>
+
+    <div class="notifcard" id="notifcard">
+      <div class="card">
+        <div class="card-header">
+          <a href="#" class="btn-back" onclick="fecharNotifCard()">
+            <img class="icon1" src="assets/seta-esquerda.png" alt="voltar">
+          </a>
+          <h2 class="medio-text">Configurações > Notificações</h2>
+        </div>
+
+        <p class="descricao">
+          Escolha quando deseja receber alertas sobre seus gastos em relação à meta definida.
+        </p>
+
+        <div class="checkbox-container-notif">
+          <label class="notif-option">
+            <input type="checkbox" class="chk" id="chk50" checked>
+            <span>Notificar em 50% da meta</span>
+          </label>
+          <div class="separator"></div>
+
+          <label class="notif-option">
+            <input type="checkbox" class="chk" id="chk80" checked>
+            <span>Notificar em 80% da meta</span>
+          </label>
+          <div class="separator"></div>
+
+          <label class="notif-option">
+            <input type="checkbox" class="chk" id="chk100" checked>
+            <span>Notificar em 100% da meta</span>
+          </label>
+          <div class="separator"></div>
+
+          <label class="notif-option">
+            <input type="checkbox" id="chkNone">
+            <span>Desativar notificações</span>
+          </label>
+        </div>
+
+        <button id="btn-salvar-nofif" class="btn-salvar" onclick="">Salvar</button>
+      </div>
+    </div>
+
+
 
     <!-- Opção de Exportar -->
     <div class="config-item">

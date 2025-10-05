@@ -492,3 +492,120 @@
   color: var(--color-text-primary);
   display: block;
 }
+
+
+.notifcard {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.notifcard .card {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  padding: 30px 25px;
+  width: 90%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  animation: aparecer 0.3s ease;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-header h2 {
+  font-size: 18px;
+  color: #222;
+  margin: 0;
+  font-weight: 700;
+}
+
+.btn-back img {
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
+}
+
+.descricao {
+  font-size: 15px;
+  color: #555;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* Lista de checkboxes */
+.checkbox-container-notif {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.notif-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.notif-option input[type="checkbox"] {
+  accent-color: #7b4dff;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out;
+}
+
+.notif-option input[type="checkbox"]:active {
+  transform: scale(1.2);
+}
+
+.notif-option span {
+  font-size: 16px;
+  color: #333;
+}
+
+/* Linha separadora */
+.separator {
+  width: 100%;
+  height: 1px;
+  background: #eee;
+  margin: 0;
+}
+
+/* Botão roxo */
+.btn-salvar {
+  background-color: #7b4dff;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+  box-shadow: 0 3px 8px rgba(123, 77, 255, 0.3);
+  transition: 0.2s;
+}
+
+.btn-salvar:hover {
+  background-color: #6939e9;
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
