@@ -1,6 +1,3 @@
-header{
-  padding-top: 400px;
-}
 #saldo{
     display: flex;
     flex-direction: row;
@@ -230,25 +227,29 @@ header{
 
 }
 
+header{
+  padding-top: 400px;
+}
+
 .topo{
     display: flex;
     justify-content: space-between; /* logo à esquerda, botão à direita */
     align-items: center; /* centraliza verticalmente */
     padding: 1px 12px 2px 80px;
-    position: absolute;
+   
+    position: fixed;
+    top: 0;
     width: 100%;
-}
+    z-index: 10;
+    margin-top: 0x;
 
 
-.botoomenuuu{
-  width: 100%;
-  height: 30px;
+    img{
+        width:200px;
+        height: 100px;
+    }
 }
 
-.logo{
-  width: 200px;
-  height: auto
-}
 #historico li.selected-for-delete {
   background-color: rgba(239, 68, 68, 0.1); /* Vermelho transparente */
   transition: background-color 0.2s ease;
